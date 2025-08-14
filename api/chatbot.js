@@ -1,9 +1,13 @@
 // api/chat.js
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Only POST requests allowed" });
+  }
+
   const { message } = req.body;
 
   if (!process.env.OPENAI_API_KEY) {
-    return res.status(500).json({ error: "API key not set" });
+    return res.status(500).json({ error: "OpenAI API key is missing" });
   }
 
   try {
@@ -16,12 +20,19 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: message }],
+        temperature: 0.7
       })
     });
 
     const data = await response.json();
+
+    if (!data.choices || !data.choices[0]) {
+      return res.status(500).json({ error: "Invalid response from OpenAI" });
+    }
+
     res.status(200).json({ reply: data.choices[0].message.content });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to connect to OpenAI" });
   }
 }
